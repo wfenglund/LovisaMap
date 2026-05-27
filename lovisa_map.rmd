@@ -1,0 +1,55 @@
+---
+title: "Lovisa och William"
+# output: html_document
+output:
+  flexdashboard::flex_dashboard:
+    theme:
+      # united
+      # simplex
+      # yeti
+      readable
+        # primary:
+          # "#144836"
+    # logo:
+      # example.svg
+      
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+library(flexdashboard)
+library(leaflet)
+library(readxl)
+```
+
+```{r echo=FALSE}
+loveData <- readxl::read_xlsx("data_points.xlsx")
+loveData$Lattitude <- as.numeric(loveData$Lattitude)
+loveData$Longitude <- as.numeric(loveData$Longitude)
+
+scatterCoords <- function(inCoords, newCoords = c()) {
+  curCoord <- as.character(inCoords[length(inCoords)])
+  outCoords <- inCoords[-length(inCoords)]
+  if(as.numeric(curCoord) %in% newCoords) {
+    curCoord <- paste0(substr(curCoord, 1, 7), sample(0:9, 1))#, sample(0:9, 1))
+  }
+  if(length(outCoords) != 0) {
+    scatterCoords(inCoords = outCoords, newCoords = c(as.numeric(curCoord), newCoords))
+  } else {
+    return(c(as.numeric(curCoord), newCoords))
+  }
+}
+
+loveData$Lattitude <- scatterCoords(loveData$Lattitude)
+loveData$Longitude <- scatterCoords(loveData$Longitude)
+
+markerSettings <- awesomeIcons(icon = "heart", library = "fa", markerColor = "red", iconColor = "pink")
+
+leaflet::leaflet(loveData) %>%
+  leaflet::addTiles() %>%
+  leaflet::addAwesomeMarkers(lng = ~ Longitude, lat = ~ Lattitude, label = ~ Händelse, popup = ~ paste0("<b>", Händelse, "</b>: ", Datum), icon = markerSettings)
+```
+
