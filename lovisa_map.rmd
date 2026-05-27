@@ -25,6 +25,7 @@ library(readxl)
 library(crosstalk)
 library(leaflet)
 library(DT)
+library(htmltools)
 ```
 
 Column {data-width=600}
@@ -51,11 +52,14 @@ scatterCoords <- function(inCoords, newCoords = c()) {
 loveData$Lattitude <- scatterCoords(loveData$Lattitude)
 loveData$Longitude <- scatterCoords(loveData$Longitude)
 
-loveData <- crosstalk::SharedData$new(loveData, ~Händelse)
+loveData$key_id <- seq_len(nrow(loveData))
+
+loveData <- crosstalk::SharedData$new(loveData)
+# loveData <- crosstalk::SharedData$new(loveData, ~Händelse)
 
 markerSettings <- awesomeIcons(icon = "heart", library = "fa", markerColor = "red", iconColor = "pink")
 
-leaflet::leaflet(loveData) %>%
+leaflet::leaflet(loveData, elementId = "myMap") %>%
   leaflet::addTiles() %>%
   leaflet::addAwesomeMarkers(lng = ~ Longitude, lat = ~ Lattitude, label = ~ Händelse, popup = ~ paste0("<b>", Händelse, "</b>: ", Datum), icon = markerSettings)
 ```
@@ -69,6 +73,44 @@ DT::datatable(data = loveData, extensions = "Select", selection = "none", rownam
     select = list(style = 'os', items = 'row'),
     dom = "t",
     columnDefs = list(list(visible = FALSE, targets = c(1, 2, 4)))
-  ))
+  ), elementId = "myTable")
 ```
 
+```{r, echo=FALSE}
+# Generated code:
+# 4. Pure browser JavaScript to handle flyTo mapping and Popups automatically
+tags$script(HTML("
+  $(document).ready(function() {
+    // Wait for the HTML elements to fully initialize in the browser
+    setTimeout(function() {
+      var table = HTMLWidgets.getInstance(document.getElementById('myTable')).table;
+      var map = HTMLWidgets.getInstance(document.getElementById('myMap'));
+
+      // Listen for row click selections inside the Datatable view
+      table.on('select', function(e, dt, type, indexes) {
+        if (type === 'row') {
+          var rowData = table.row(indexes[0]).data();
+          
+          // Pull target spatial coordinates from the hidden data columns
+          // Adjust array mapping positions if columns rearrange
+          var lat = parseFloat(rowData[2]); 
+          var lng = parseFloat(rowData[3]);
+          var title = rowData[0];
+          var date = rowData[1];
+
+          if (!isNaN(lat) && !isNaN(lng)) {
+            // Smooth pan/zoom down into the target dot coordinate
+            map.flyTo([lat, lng], 14);
+
+            // Dynamically inject and snap open an active information popup
+            L.popup()
+              .setLatLng([lat, lng])
+              .setContent('<strong>' + title + '</strong><br>' + date)
+              .openOn(map);
+          }
+        }
+      });
+    }, 1500); // 1.5-second buffer ensures smooth script asset bindings
+  });
+"))
+```
