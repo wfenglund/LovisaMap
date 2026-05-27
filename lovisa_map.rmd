@@ -27,7 +27,7 @@ library(leaflet)
 library(DT)
 ```
 
-Column {data-width=500}
+Column {data-width=600}
 --------------------------------------------------------------------------------
 ### 
 ```{r echo=FALSE}
