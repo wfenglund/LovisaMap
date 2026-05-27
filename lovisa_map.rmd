@@ -55,7 +55,8 @@ markerSettings <- awesomeIcons(icon = "heart", library = "fa", markerColor = "re
 
 leaflet::leaflet(loveData, elementId = "myMap") %>%
   leaflet::addTiles() %>%
-  leaflet::addAwesomeMarkers(lng = ~ Longitude, lat = ~ Latitude, label = ~ Händelse, popup = ~ paste0("<b>", Händelse, "</b>: ", Datum), icon = markerSettings) %>%
+  leaflet::addAwesomeMarkers(lng = ~ Longitude, lat = ~ Latitude, popup = ~ paste0("<b>", Händelse, "</b>: ", Datum), icon = markerSettings) %>%
+  # leaflet::addAwesomeMarkers(lng = ~ Longitude, lat = ~ Latitude, label = ~ Händelse, popup = ~ paste0("<b>", Händelse, "</b>: ", Datum), icon = markerSettings) %>%
   htmlwidgets::onRender("
     function(el, x) {
       window.myNativeMap = this; 
