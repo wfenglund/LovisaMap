@@ -22,7 +22,6 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r include=FALSE}
 library(flexdashboard)
 library(readxl)
-library(crosstalk)
 library(leaflet)
 library(DT)
 library(htmltools)
@@ -33,7 +32,7 @@ Column {data-width=600}
 ### 
 ```{r echo=FALSE}
 loveData <- readxl::read_xlsx("data_points.xlsx")
-loveData$Lattitude <- as.numeric(loveData$Lattitude)
+loveData$Latitude <- as.numeric(loveData$Latitude)
 loveData$Longitude <- as.numeric(loveData$Longitude)
 
 scatterCoords <- function(inCoords, newCoords = c()) {
@@ -49,68 +48,76 @@ scatterCoords <- function(inCoords, newCoords = c()) {
   }
 }
 
-loveData$Lattitude <- scatterCoords(loveData$Lattitude)
+loveData$Latitude <- scatterCoords(loveData$Latitude)
 loveData$Longitude <- scatterCoords(loveData$Longitude)
-
-loveData$key_id <- seq_len(nrow(loveData))
-
-loveData <- crosstalk::SharedData$new(loveData)
-# loveData <- crosstalk::SharedData$new(loveData, ~Händelse)
 
 markerSettings <- awesomeIcons(icon = "heart", library = "fa", markerColor = "red", iconColor = "pink")
 
 leaflet::leaflet(loveData, elementId = "myMap") %>%
   leaflet::addTiles() %>%
-  leaflet::addAwesomeMarkers(lng = ~ Longitude, lat = ~ Lattitude, label = ~ Händelse, popup = ~ paste0("<b>", Händelse, "</b>: ", Datum), icon = markerSettings)
+  leaflet::addAwesomeMarkers(lng = ~ Longitude, lat = ~ Latitude, label = ~ Händelse, popup = ~ paste0("<b>", Händelse, "</b>: ", Datum), icon = markerSettings) %>%
+  htmlwidgets::onRender("
+    function(el, x) {
+      window.myNativeMap = this; 
+    }
+  ") # expose the map globally
 ```
 
 Column {data-width=200}
 --------------------------------------------------------------------------------
 ### 
 ```{r echo=FALSE}
-DT::datatable(data = loveData, extensions = "Select", selection = "none", rownames = FALSE, options = list(pageLength = 100, 
-    autoWidth = TRUE,
-    select = list(style = 'os', items = 'row'),
+# DT::datatable(data = loveData, extensions = "Select", selection = "none", rownames = FALSE, options = list(pageLength = 100, 
+#     autoWidth = TRUE,
+#     select = list(style = 'os', items = 'row'),
+#     dom = "t",
+#     columnDefs = list(list(visible = FALSE, targets = c(1, 2, 4)))
+#   ), elementId = "myTable"
+#   )
+
+DT::datatable(
+  data = loveData, 
+  rownames = FALSE, 
+  options = list(
+    pageLength = 100, 
     dom = "t",
-    columnDefs = list(list(visible = FALSE, targets = c(1, 2, 4)))
-  ), elementId = "myTable")
-```
+    autoWidth = TRUE,
+    columnDefs = list(list(visible = FALSE, targets = c(2, 3, 4))),
+    rowCallback = JS("
+      function(row, data, index) {
+        // data[0]=Händelse, data[1]=Datum, data[2]=Latitude, data[3]=Longitude
+        $(row).attr('data-lat', data[2]);
+        $(row).attr('data-lng', data[3]);
+        $(row).attr('data-title', data[0]);
+        $(row).attr('data-date', data[1]);
+        $(row).css('cursor', 'pointer'); 
+      }
+    ") # store the data in the html
+  ),
+  callback = JS("
+    // Listen for direct clicks on the table body rows
+    table.on('click', 'tbody tr', function() {
+      var row = $(this);
+      var lat   = parseFloat(row.attr('data-lat'));
+      var lng   = parseFloat(row.attr('data-lng'));
+      var title = row.attr('data-title');
+      var date  = row.attr('data-date');
 
-```{r, echo=FALSE}
-# Generated code:
-# 4. Pure browser JavaScript to handle flyTo mapping and Popups automatically
-tags$script(HTML("
-  $(document).ready(function() {
-    // Wait for the HTML elements to fully initialize in the browser
-    setTimeout(function() {
-      var table = HTMLWidgets.getInstance(document.getElementById('myTable')).table;
-      var map = HTMLWidgets.getInstance(document.getElementById('myMap'));
+      // Check if our global map instance has loaded and coordinates are valid numbers
+      if (window.myNativeMap && !isNaN(lat) && !isNaN(lng)) {
+        
+        window.myNativeMap.closePopup();
 
-      // Listen for row click selections inside the Datatable view
-      table.on('select', function(e, dt, type, indexes) {
-        if (type === 'row') {
-          var rowData = table.row(indexes[0]).data();
-          
-          // Pull target spatial coordinates from the hidden data columns
-          // Adjust array mapping positions if columns rearrange
-          var lat = parseFloat(rowData[2]); 
-          var lng = parseFloat(rowData[3]);
-          var title = rowData[0];
-          var date = rowData[1];
+        // Target the native Leaflet map engine directly to execute the panning camera 
+        window.myNativeMap.flyTo([lat, lng], 15);
 
-          if (!isNaN(lat) && !isNaN(lng)) {
-            // Smooth pan/zoom down into the target dot coordinate
-            map.flyTo([lat, lng], 14);
-
-            // Dynamically inject and snap open an active information popup
-            L.popup()
-              .setLatLng([lat, lng])
-              .setContent('<strong>' + title + '</strong><br>' + date)
-              .openOn(map);
-          }
-        }
-      });
-    }, 1500); // 1.5-second buffer ensures smooth script asset bindings
-  });
-"))
+        // Render an interactive info popup window bubble
+        L.popup()
+          .setLatLng([lat, lng])
+          .setContent('<strong>' + title + '</strong><br>' + date)
+          .openOn(window.myNativeMap);
+      }
+    });
+  ")
+)
 ```
