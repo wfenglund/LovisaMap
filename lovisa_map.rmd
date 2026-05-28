@@ -10,6 +10,8 @@ output:
       readable
         # primary:
           # "#144836"
+          # "#FF7ACA"
+          # "#C91833"
     # logo:
       # example.svg
       
