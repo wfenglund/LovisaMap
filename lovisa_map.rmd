@@ -53,10 +53,17 @@ loveData$Longitude <- scatterCoords(loveData$Longitude)
 
 markerSettings <- awesomeIcons(icon = "heart", library = "fa", markerColor = "red", iconColor = "pink")
 
+arrangeDates <- function(dateString) {
+  monthData <- data.frame(Roman = c("I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"), Month = c("januari", "februari", "mars", "april", "maj", "juni", "juli", "augusti", "september", "oktober", "november", "december"))
+  strVector <- unlist(strsplit(dateString, "\\."))
+  paste(strVector[3], monthData$Month[match(toupper(strVector[2]), monthData$Roman)], strVector[1])
+}
+
+loveData$ArrangedDates <- unlist(lapply(loveData$Datum, arrangeDates))
+
 leaflet::leaflet(loveData, elementId = "myMap") %>%
   leaflet::addTiles() %>%
-  leaflet::addAwesomeMarkers(lng = ~ Longitude, lat = ~ Latitude, popup = ~ paste0("<b>", Händelse, "</b>: ", Datum), icon = markerSettings) %>%
-  # leaflet::addAwesomeMarkers(lng = ~ Longitude, lat = ~ Latitude, label = ~ Händelse, popup = ~ paste0("<b>", Händelse, "</b>: ", Datum), icon = markerSettings) %>%
+  leaflet::addAwesomeMarkers(lng = ~ Longitude, lat = ~ Latitude, popup = ~ paste0("<b>", Händelse, "</b><br>", ArrangedDates), icon = markerSettings) %>%
   htmlwidgets::onRender("
     function(el, x) {
       window.myNativeMap = this; 
@@ -86,11 +93,11 @@ DT::datatable(
     columnDefs = list(list(visible = FALSE, targets = c(2, 3, 4))),
     rowCallback = JS("
       function(row, data, index) {
-        // data[0]=Händelse, data[1]=Datum, data[2]=Latitude, data[3]=Longitude
+        // data[0]=Händelse, data[5]=Datum, data[2]=Latitude, data[3]=Longitude
         $(row).attr('data-lat', data[2]);
         $(row).attr('data-lng', data[3]);
         $(row).attr('data-title', data[0]);
-        $(row).attr('data-date', data[1]);
+        $(row).attr('data-date', data[5]);
         $(row).css('cursor', 'pointer'); 
       }
     ") # store the data in the html
