@@ -90,7 +90,7 @@ DT::datatable(
     pageLength = 100, 
     dom = "t",
     autoWidth = TRUE,
-    columnDefs = list(list(visible = FALSE, targets = c(2, 3, 4))),
+    columnDefs = list(list(visible = FALSE, targets = c(2, 3, 4, 5))),
     rowCallback = JS("
       function(row, data, index) {
         // data[0]=Händelse, data[5]=Datum, data[2]=Latitude, data[3]=Longitude
